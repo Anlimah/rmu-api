@@ -2,6 +2,7 @@
 
 namespace Src\Controller;
 
+use DateTime;
 use Src\System\DatabaseMethods;
 use Src\Controller\PaymentController;
 use Src\Gateway\CurlGatewayAccess;
@@ -25,57 +26,65 @@ class ExposeDataController
 
     public function validateEmail($input)
     {
-        if (empty($input)) die(json_encode(array("success" => false, "message" => "Input required!")));
+        if (empty($input)) return false;
         $user_email = htmlentities(htmlspecialchars($input));
         $sanitized_email = filter_var($user_email, FILTER_SANITIZE_EMAIL);
-        if (!filter_var($sanitized_email, FILTER_VALIDATE_EMAIL))
-            die(json_encode(array("success" => false, "message" => "Invalid email address!" . $sanitized_email)));
+        if (!filter_var($sanitized_email, FILTER_VALIDATE_EMAIL)) return false;
         return $user_email;
     }
 
     public function validateInput($input)
     {
-        if (empty($input)) die(json_encode(array("success" => false, "message" => "Input required!")));
+        if (empty($input)) return false;
         $user_input = htmlentities(htmlspecialchars($input));
         $validated_input = (bool) preg_match('/^[A-Za-z0-9]/', $user_input);
         if ($validated_input) return $user_input;
-        die(json_encode(array("success" => false, "message" => "Invalid input!")));
+        return false;
+    }
+
+    public function validateName($input): bool
+    {
+        if (empty($input)) return false;
+        $user_input = htmlentities(htmlspecialchars($input));
+        $validated_input = (bool) preg_match("/^[\p{L}'\s.-]+$/u", $user_input);
+        if ($validated_input) return true;
+        return false;
     }
 
     public function validateCountryCode($input)
     {
-        if (empty($input)) die(json_encode(array("success" => false, "message" => "Input required!")));
+        if (empty($input)) return false;
         $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[A-Za-z0-9()+]/', $user_input);
+        $validated_input = (bool) preg_match('/[A-Za-z0-9()+]+/', $user_input);
         if ($validated_input) return $user_input;
-        die(json_encode(array("success" => false, "message" => "Invalid input!")));
+        return false;
     }
 
     public function validatePassword($input)
     {
-        if (empty($input)) die(json_encode(array("success" => false, "message" => "Input required!")));
+        if (empty($input)) return false;
         $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[A-Za-z0-9()+@#.-_=$&!`]/', $user_input);
+        $validated_input = (bool) preg_match('/[A-Za-z0-9()+@#.-_=$&!`]+/', $user_input);
         if ($validated_input) return $user_input;
-        die(json_encode(array("success" => false, "message" => "Invalid input!")));
+        return false;
     }
 
-    public function validatePhone($input)
+    public function validatePhone($input): bool
     {
-        if (empty($input)) die(json_encode(array("success" => false, "message" => "Input required!")));
+        if (empty($input)) return false;
         $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[0-9]/', $user_input);
-        if ($validated_input) return $user_input;
-        die(json_encode(array("success" => false, "message" => "Invalid input!")));
+        $validated_input = (bool) preg_match('/[0-9]+/', $user_input);
+        if ($validated_input) return true;
+        return false;
     }
 
     public function validateText($input)
     {
-        if (empty($input)) die(json_encode(array("success" => false, "message" => "Input required!")));
+        if (empty($input)) return false;
         $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[A-Za-z]/', $user_input);
+        $validated_input = (bool) preg_match('/[A-Za-z,]+/', $user_input);
         if ($validated_input) return $user_input;
-        die(json_encode(array("success" => false, "message" => "Invalid input!")));
+        return false;
     }
 
     public function validateDate($date)
@@ -85,90 +94,16 @@ class ExposeDataController
         if (checkdate($month, $day, $year)) return $date;
     }
 
-    public function validateImage($files)
+    public function validateDateTime($input, $format = 'Y-m-d H:i:s')
     {
-        if (!isset($files['file']['error']) || !empty($files["pics"]["name"])) {
-            $allowedFileType = ['image/jpeg', 'image/png', 'image/jpg'];
-            for ($i = 0; $i < count($files["pics"]["name"]); $i++) {
-                $check = getimagesize($files["pics"]["tmp_name"][$i]);
-                if ($check !== false && in_array($files["pics"]["type"][$i], $allowedFileType)) {
-                    return $files;
-                }
-            }
-        }
-        die(json_encode(array("success" => false, "message" => "Invalid file uploaded!")));
-    }
-
-    public function validateInputTextOnly($input): array
-    {
-        if (empty($input)) {
-            return array("success" => false, "message" => "Input required!");
-        }
-
-        $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[A-Za-z]/', $user_input);
-
-        if ($validated_input) {
-            return array("success" => true, "message" => $user_input);
-        }
-
-        return array("success" => false, "message" => "Invalid input!");
-    }
-
-    public function validateInputTextNumber($input): array
-    {
-        if (empty($input)) {
-            return array("status" => "error", "message" => "required");
-        }
-
-        $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[A-Za-z0-9]/', $user_input);
-
-        if ($validated_input) {
-            return array("status" => "success", "message" => $user_input);
-        }
-
-        return array("status" => "error", "message" => "invalid");
-    }
-
-    public function validateYearData($input): array
-    {
-        if (empty($input) || strtoupper($input) == "YEAR") {
-            return array("status" => "error", "message" => "required");
-        }
-
-        if ($input < 1990 || $input > 2022) {
-            return array("status" => "error", "message" => "invalid");
-        }
-
-        $user_input = htmlentities(htmlspecialchars($input));
-        $validated_input = (bool) preg_match('/^[0-9]/', $user_input);
-
-        if ($validated_input) {
-            return array("status" => "success", "message" => $user_input);
-        }
-
-        return array("status" => "error", "message" => "invalid");
-    }
-
-    public function validateGrade($input): array
-    {
-        if (empty($input) || strtoupper($input) == "GRADE") {
-            return array("status" => "error", "message" => "required");
-        }
-
-        if (strlen($input) < 1 || strlen($input) > 2) {
-            return array("status" => "error", "message" => "invalid");
-        }
-
-        $user_input = htmlentities(htmlspecialchars($input));
-        return array("status" => "success", "message" => $user_input);
+        if (empty($input)) return false;
+        $d = DateTime::createFromFormat($format, $input);
+        return $d && $d->format($format) == $input;
     }
 
     public function getCurrentAdmissionPeriodID()
     {
-        //return $this->dm->getData("SELECT * FROM `admission_period` WHERE `active` = 1 OR deadline <> NOW()");
-        return $this->dm->getID("SELECT `id` FROM `admission_period` WHERE `active` = 1");
+        return $this->dm->getData("SELECT `id` FROM `admission_period` WHERE `active` = 1 AND `closed` = 0");
     }
 
     public function getIPAddress()
@@ -198,7 +133,7 @@ class ExposeDataController
         return $this->dm->getData("SELECT * FROM `forms` WHERE `id` = :fi", array(":fi" => $form_id));
     }
 
-    public function getFormPriceB($form_name)
+    public function getFormDetailsByFormName($form_name)
     {
         return $this->dm->getData("SELECT * FROM `forms` WHERE `name` = :fn", array(":fn" => $form_name));
     }
@@ -224,7 +159,7 @@ class ExposeDataController
     public function getOtherForms()
     {
         return $this->dm->getData("SELECT f.* FROM `forms` AS f, `form_categories` AS fc 
-        WHERE f.form_category = fc.id AND fc.name IN ('UNDERGRADUATE', 'POSTGRADUATE')");
+        WHERE f.form_category = fc.id AND fc.name NOT IN ('UNDERGRADUATE', 'POSTGRADUATE')");
     }
 
     public function sendHubtelSMS($url, $payload)
@@ -245,43 +180,10 @@ class ExposeDataController
         return $this->sendHubtelSMS($url, $payload);
     }
 
-    public function sendOTP($to)
-    {
-        $otp_code = $this->genCode(4);
-        $message = 'Your OTP verification code: ' . $otp_code;
-        $response = json_decode($this->sendSMS($to, $message), true);
-        if (!$response["status"]) $response["otp_code"] = $otp_code;
-        return $response;
-    }
-
     public function getVendorPhone($vendor_id)
     {
         $sql = "SELECT `country_code`, `phone_number` FROM `vendor_details` WHERE `id`=:i";
         return $this->dm->getData($sql, array(':i' => $vendor_id));
-    }
-
-    /**
-     * @param int transaction_id //transaction_id
-     */
-    public function callOrchardGateway($data)
-    {
-        $payConfirm = new PaymentController();
-        return $payConfirm->orchardPaymentControllerB($data);
-    }
-
-    /**
-     * @param int transaction_id //transaction_id
-     */
-    public function confirmPurchase(int $transaction_id)
-    {
-        $payConfirm = new PaymentController();
-        return $payConfirm->processTransaction($transaction_id);
-    }
-
-    public function processVendorPay($data)
-    {
-        $payConfirm = new PaymentController();
-        return $payConfirm->vendorPaymentProcess($data);
     }
 
     public function vendorExist($vendor_id)
@@ -290,10 +192,59 @@ class ExposeDataController
         return $this->dm->getID($str, array(':i' => $vendor_id));
     }
 
-    public function requestLogger($request)
+    //
+    public function activityLogger($request, $route, $api_user)
     {
-        $query = "INSERT INTO `ussd_request_logs` (`request`) VALUES(:nc)";
-        $params = array(":nc" => $request);
-        $this->dm->inputData($query, $params);
+        $query = "INSERT INTO `api_request_logs` (`request`, `route`, `api_user`) VALUES(:r, :t, :u)";
+        $params = array(":r" => $request, ":t" => $route, ":u" => $api_user);
+        return $this->dm->inputData($query, $params);
+    }
+
+    public function verifyAPIAccess($username, $password): int
+    {
+        $sql = "SELECT * FROM `api_users` WHERE `username`=:u";
+        $data = $this->dm->getData($sql, array(':u' => $username));
+        if (!empty($data)) if (password_verify($password, $data[0]["password"])) return (int) $data[0]["id"];
+        return 0;
+    }
+
+    public function getAllAvaialbleForms()
+    {
+        return $this->dm->getData("SELECT `name` AS form_type, `amount` AS price FROM `forms`");
+    }
+
+    public function getPurchaseStatusByExtransID($externalTransID)
+    {
+        $query = "SELECT `status`, `ext_trans_id`, `ext_trans_datetime` AS trans_dt 
+                FROM `purchase_detail` WHERE `ext_trans_id` = :t";
+        return $this->dm->getData($query, array(':t' => $externalTransID));
+    }
+
+    public function getPurchaseInfoByExtransID($externalTransID)
+    {
+        $query = "SELECT CONCAT('RMU-', `app_number`) AS app_number, `pin_number`, 
+                    `ext_trans_id`, `phone_number`, `ext_trans_datetime` AS trans_dt
+                FROM `purchase_detail` WHERE `ext_trans_id` = :t";
+        return $this->dm->getData($query, array(':t' => $externalTransID));
+    }
+
+    public function getVendorIdByAPIUser($api_user): mixed
+    {
+        $query = "SELECT `vendor_id` FROM `api_users` WHERE `id` = :a";
+        return $this->dm->getData($query, array(':a' => $api_user));
+    }
+
+    public function verifyExternalTransID($externalTransID, $api_user)
+    {
+        $query = "SELECT pd.`id` FROM `purchase_detail` AS pd, api_users AS au 
+        WHERE pd.`ext_trans_id` = :t AND au.`id` = :a AND pd.`vendor` = au.`vendor_id`";
+        return $this->dm->getID($query, array(':t' => $externalTransID, ':a' => $api_user));
+    }
+
+    public function fetchCompanyIDByCode($companyCode, $apiUser): mixed
+    {
+        $query = "SELECT vd.`id` FROM vendor_details AS vd, api_users AS au 
+                WHERE vd.`company_code` = :c AND au.id = :a AND branch = 'MAIN' AND au.vendor_id = vd.id";
+        return $this->dm->getID($query, array(":c" => $companyCode, ":a" => $apiUser));
     }
 }
