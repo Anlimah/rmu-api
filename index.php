@@ -55,7 +55,7 @@ switch ($_SERVER["REQUEST_METHOD"]) {
         $user = $expose->authenticateAccess($authUsername, $authPassword);
 
         if (!$user) {
-            http_response_code(401); // Unauthorized
+            http_response_code(401); // Unauthorized.
             header('WWW-Authenticate: Basic realm="API Authentication"');
             echo json_encode(array("resp_code" => "606", "message" => "Invalid authorization credentials."));
             exit;
