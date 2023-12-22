@@ -48,12 +48,12 @@ class APIEndpointHandler
         if (!$this->validateRequestParam("validateInput", $payload, "branch_name"))
             return array("resp_code" => "707", "message" => "Invalid branch name in request body parameters.");
 
-        $redisGetForms = $this->redis->get('getForms');
+        $redisGetForms = $this->redis->get('getLiveForms');
         if (!empty($redisGetForms)) {
             $data = unserialize($redisGetForms);
         } else {
             $data = $this->expose->getAllAvaialbleForms();
-            $this->redis->set("getForms", serialize($data));
+            $this->redis->set("getLiveForms", serialize($data));
         }
 
         if (empty($data)) return array("resp_code" => "801", "message" => "Forms are currently unavailable.");
